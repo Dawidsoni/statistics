@@ -1,0 +1,101 @@
+---
+title: "Statistics - Assignment 1"
+author: Dawid Wegner
+date: 18/10/2020
+output: html_notebook
+---
+
+# Task 1
+
+```{r}
+set.seed(1)
+```
+
+```{r}
+count_estimators_frame <- function(generate_samples_func, estimators_count=10000) {
+  estimators_frame <- data.frame(matrix(nrow = estimators_count, ncol = 4))
+  colnames(estimators_frame) <- c("mean", "median", "weighted_mean", "normal_mean")
+  for (i in 1:estimators_count) {
+    generated_samples <- generate_samples_func()
+    estimators_frame[i, "mean"] <- mean(generated_samples)
+    estimators_frame[i, "median"] <- median(generated_samples)
+    weights <- seq_along(generated_samples) / sum(seq_along(generated_samples))
+    estimators_frame[i, "weighted_mean"] <- sum(generated_samples * weights)
+    prev_sequences <- (seq_along(generated_samples) - 1) / length(generated_samples)
+    current_sequences <- seq_along(generated_samples) / length(generated_samples)
+    normal_weights <- dnorm(qnorm(prev_sequences)) - dnorm(qnorm(current_sequences))
+    sorted_samples <- sort(generated_samples)
+    estimators_frame[i, "normal_mean"] <- sum(sorted_samples * normal_weights)
+  }
+  return(estimators_frame)
+}
+
+
+count_estimators_statistics <- function(estimators_frame, estimated_paramter, excluded_col_names=c()) {
+  statistics_frame <- data.frame(matrix(nrow = 1, ncol = 0))
+  for (col_name in colnames(estimators_frame)) {
+    if (col_name %in% excluded_col_names) {
+      next
+    }
+    statistics_frame[paste0(col_name, '.ms')] <- mean((c(estimators_frame[[col_name]]) - estimated_paramter) ^ 2)
+    statistics_frame[paste0(col_name, '.var')] <- var(c(estimators_frame[[col_name]]))
+    statistics_frame[paste0(col_name, '.bias')] <- mean(c(estimators_frame[[col_name]]) - estimated_paramter)
+  }
+  return(statistics_frame)
+}
+
+
+count_norm_estimators_statistics <- function (n, mean, sd) {
+  estimators_frame <- count_estimators_frame(function() rnorm(n=n, mean=mean, sd=sd))
+  return(count_estimators_statistics(estimators_frame, estimated_paramter=mean))
+}
+```
+
+Recall that it holds $MSE(\bar{\theta}) = Var_{\theta}(\bar{\theta}) + Bias_{\theta}(\bar{\theta}, \theta)^2$. The bias of an estimator is defined as the difference between estimator's expected value and the true value of the parameter being estimated. Based on this definition, the intuition is that the first 3 estimators (mean, median and weighted mean) are unbiased, while the last one (mean with the weights based on the standard normal distribution) is biased.
+
+```{r}
+round(count_norm_estimators_statistics(n=50, mean=1, sd=1), digits = 6)
+```
+
+The first experiment confirms our intuition as it can be observed that the first three estimators have a variance close to the mean squared error, while a bias is close to 0. In contrast, a bias of the last estimator is equal to about -0.029 that confirms that this estimator is biased and implies that the expected value of this estimator is greater than the true value of the parameter being estimated. Moreover, the variance of this estimator is a bit lower compared to other estimators.
+
+```{r}
+round(count_norm_estimators_statistics(n=50, mean=4, sd=1), digits = 6)
+```
+
+The results for the first three estimators are the same as in the previous experiment. This is expected as the only parameter that has changed is a mean of the distribution. Contrary to the previous estimators, the mean squared error of the last estimator has changed significantly. Moreover, it can be seen that the mean squared error was impacted by the bias term that has changed from about -0.029 to -3.02. On the contrary, the variance is similar to the value obtained in the previous experiment.
+
+
+```{r}
+round(count_norm_estimators_statistics(n=50, mean=1, sd=2), digits = 6)
+```
+
+The results of the last experiment show that increasing the variance of the distribution impacts the variance of estimators. It can be observed based on the variances of the first three estimators that significantly increased. Moreover, it has impacted not only the variance of the last estimator, but also its bias. The reason for this phenomenon can be that the estimator applies weights to sorted samples and higher weights are put to rare samples.
+
+# Task 2
+
+A so-called seed is a number that is used to initialize a pseudorandom number generator. By default, it is chosen randomly that implies that the results of generating random numbers are non-deterministic each time the program is running the same sequence of commands. In contrast, setting a fixed seed, using `random.seed` method, implies that the same random numbers will be produced each time the program is running the same commands. Note that it doesn't mean that e.g. `rnorm` will always produce the same results. On the contrary, it means that after calling `random.seed` and using the same sequence of methods involving generating random numbers, these methods will produce the same sequence of random numbers. It also implies that using the same generating methods, but in different order, produces different results.
+
+One application of using `random.seed` are simulations that need to be reproduced. It is also useful when reports are created and concrete numbers produced by a program are mentioned. The other application is to make unit tests deterministic, but this is often discouraged in modern programming languages.
+
+# Task 3
+
+Recall that finding a maximum of $log(L(\theta, x)) = l(\theta, x) = \sum_k log(f(\theta, x_k))$ corresponds to finding a $\theta$ such that $l'(\theta, x) = 0$, where the derivative is taken with the respect to the $\theta$ parameter. After applying $f(\theta, x_k) = \frac{e^{-(x_k - \theta)}}{(1 + e^{-(x_k - \theta)})^2}$ (that is a PDF of logistic distribution with the scale of 1 and an unknown location parameter defined by $\theta$) to the equation, it simplifies to $l(\theta, x) = n\theta - n\bar{x} - 2 \sum_k log(1 + e^{-(x_k - \theta)})$. This implies that the optimal $\theta$ can be derived from the equation $0 = l'(\theta, x) = n - 2 \sum_k \frac{e^{-(x_k - \theta)}}{1 + e^{-(x_k - \theta)}}$. But this equation cannot be simplified further, so the optimal $\theta$ cannot be derived arithmetically. This implies that the other kind of method has to be used to find the optimal $\theta$ e.g. a numerical method.
+
+# Task 4
+
+Recall that the problem reduces to finding a $\theta$ such that $l'(\theta, x) = 0$ holds. This type of problem can be solved using classic root finding methods like the Newton method. The method finds a root of differentiable function $f(\theta)$ by starting with the initial guess of $\theta_0$ and iterating $\theta_{n + 1} = \theta_n - \frac{f(\theta_n)}{f'(\theta_n)}$ until the convergence. In our case, it holds $f(\theta_n) = l'(\theta_n, x)$, so the equation becomes $\theta_{n + 1} = \theta_n - \frac{l'(\theta_n, x)}{l''(\theta_n, x)}$.
+
+The equation used in the Newton method can be derived from Taylor series expansion. Recall that it holds $y \approx f(x_n) + f'(x_n)(x - x_n)$. Applying $y = 0$ and transforming the equation, we get $x_{n + 1} = x \approx x_n - \frac{f(x_n)}{f'(x_n)}$ that is an update rule of the Newton method. Note that this method can fail to find a root, depending on the initial point, the function $f$ and its derivative.
+
+# Task 5
+
+TODO
+
+# Task 6
+
+TODO
+
+# Task 7
+
+TODO
