@@ -1,0 +1,244 @@
+---
+title: "Statistics - Assignment 2"
+author: Dawid Wegner
+date: 25/10/2020
+output: html_notebook
+---
+
+```{r}
+library(LaplacesDemon)
+library(ggplot2)
+
+set.seed(1)
+```
+
+# Task 1
+
+```{r}
+count_estimators_statistics <- function(estimators_frame, estimated_paramter=NULL, excluded_col_names=c()) {
+  statistics_frame <- data.frame(matrix(nrow = 1, ncol = 0))
+  if (!is.null(estimated_paramter)) {
+    statistics_frame["real_value"] <- estimated_paramter
+  }
+  for (col_name in colnames(estimators_frame)) {
+    if (col_name %in% excluded_col_names) {
+      next
+    }
+    if (grepl(pattern = "_real$", x = col_name)) {
+      statistics_frame[col_name] <- mean(estimators_frame[[col_name]])
+      next
+    }
+    real_value_col <- paste0(col_name, "_real")
+    real_value <- if (is.null(estimated_paramter)) estimators_frame[[real_value_col]] else estimated_paramter
+    statistics_frame[paste0(col_name, '_variance')] <- var(c(estimators_frame[[col_name]]), na.rm = TRUE)
+    statistics_frame[paste0(col_name, '_mse')] <- mean(
+      (c(estimators_frame[[col_name]]) - real_value) ^ 2, na.rm = TRUE
+    )
+    statistics_frame[paste0(col_name, '_bias')] <- mean(
+      c(estimators_frame[[col_name]]) - real_value, na.rm = TRUE
+    )
+  }
+  return(statistics_frame)
+}
+
+count_binomal_estimators_frame <- function(samples_count, sample_size, success_prob, estimators_count=10000) {
+  estimators_frame <- data.frame(matrix(nrow = estimators_count, ncol = 2))
+  colnames(estimators_frame) <- c("prob_ge3", "prob_ge3_real")
+  for (i in 1:estimators_count) {
+    generated_samples <- rbinom(samples_count, sample_size, success_prob)
+    estimated_p <- mean(generated_samples) / sample_size
+    estimators_frame[i, "prob_ge3"] <- pbinom(q = 2, sample_size, estimated_p, lower.tail = FALSE)
+    estimators_frame[i, "prob_ge3_real"] <- pbinom(q = 2, sample_size, success_prob, lower.tail = FALSE)
+  }
+  return(estimators_frame)
+}
+```
+
+```{r}
+binomal_frame1 <- count_binomal_estimators_frame(samples_count = 50, sample_size = 5, success_prob = 0.1)
+round(count_estimators_statistics(binomal_frame1), digits = 6)
+
+binomal_frame2 <- count_binomal_estimators_frame(samples_count = 50, sample_size = 5, success_prob = 0.3)
+round(count_estimators_statistics(binomal_frame2), digits = 6)
+
+binomal_frame3 <- count_binomal_estimators_frame(samples_count = 50, sample_size = 5, success_prob = 0.5)
+round(count_estimators_statistics(binomal_frame3), digits = 6)
+
+binomal_frame4 <- count_binomal_estimators_frame(samples_count = 50, sample_size = 5, success_prob = 0.7)
+round(count_estimators_statistics(binomal_frame4), digits = 6)
+
+binomal_frame5 <- count_binomal_estimators_frame(samples_count = 50, sample_size = 5, success_prob = 0.9)
+round(count_estimators_statistics(binomal_frame5), digits = 6)
+```
+
+Our task is to construct the MLE for $P(X \geq 3)$, where $X$ comes from $Bin(5, p)$. To achieve it, the invariance property of MLE can be utilized. In more details, it is sufficient to compute the MLE for the parameter $p$ and then transform it using cumulative distribution function of the binomal distribution.
+
+To compute the optimal parameter $p$ for generated random samples, the $l(k, p)$ must be computed. Using a little calculus, it is easy to derive the formula $l(k, p) = k log(p) + (m - k) log(1 - p) + c_1$, where $c_1$ is a constant value independent from the $p$ parameter. After calculating a derivative of this formula and extending it to multiple samples, it can be calculated that the optimal $p$ is equal to $\frac{1}{nm} \sum_i k_i$, where $n$ is the number of generated samples and $m$ is the size parameter of the binomal distribution.
+
+The results show that all estimators are unbiased i.e. the biases are marginally low compared to the real values of the parameters being estimated. Moreover, the variances of estimators are quite low. It can be observed that the closer is the estimated probability to the value of $0.5$, the higher is the variance of its estimator.
+
+# Task 2
+
+```{r}
+count_poisson_estimators_frame <- function(samples_count, lambda_param, estimators_count=10000) {
+  estimators_frame <- data.frame(matrix(nrow = estimators_count, ncol = 22))
+  for (col_index in 1:22) {
+    density_value <- (col_index - 1) %% 11
+    col_name <- if (col_index <= 11) paste0("prob_e", density_value) else paste0("prob_e", density_value, "_real")
+    colnames(estimators_frame)[col_index] <- col_name
+  }
+  for (i in 1:estimators_count) {
+    generated_samples <- rpois(samples_count, lambda_param)
+    estimated_lambda <- mean(generated_samples)
+    for (density_value in 0:10) {
+      estimators_frame[i, paste0("prob_e", density_value)] <- dpois(density_value, lambda = estimated_lambda)
+      estimators_frame[i, paste0("prob_e", density_value, "_real")] <- dpois(density_value, lambda = lambda_param)
+    }
+  }
+  return(estimators_frame)
+}
+```
+
+```{r}
+poisson_frame1 <- count_poisson_estimators_frame(samples_count = 50, lambda_param = 0.5)
+round(count_estimators_statistics(poisson_frame1), digits = 6)
+
+poisson_frame2 <- count_poisson_estimators_frame(samples_count = 50, lambda_param = 1.0)
+round(count_estimators_statistics(poisson_frame2), digits = 6)
+
+poisson_frame3 <- count_poisson_estimators_frame(samples_count = 50, lambda_param = 2.0)
+round(count_estimators_statistics(poisson_frame3), digits = 6)
+
+poisson_frame4 <- count_poisson_estimators_frame(samples_count = 50, lambda_param = 5.0)
+round(count_estimators_statistics(poisson_frame4), digits = 6)
+```
+
+The estimators can be calculated using the same theory as in the previous task. The optimal parameter $\lambda$ can be derived from the formula $l(k, \lambda) = k log(\lambda) - \lambda$. After applying it to multiple samples and calculating its derivative, it follows that the maximum value is achieved at $\hat{\lambda} = \sum_i \frac{k_i}{n}$, where $n$ is the number of samples generated.
+
+The experiments show that all estimators are unbiased. The results are consistent for any $P(X = x), x \in {0, 1, ... 10}$. The variances are a bit higher for values that are near a mode of a distribution. It is expected as the estimated parameters are higher, implying that the absolute errors of estimators are also higher.
+
+
+# Task 3
+
+To understand the definitions of random and pseudorandom numbers, it is crucial to understand how random samples are generated. Let's assume that our goal is to generate samples from a uniform distribution $U[0, 1]$. There a few reasons why the generation of independent samples is not a satisfying solution. One of the main reasons is that it would be hard to recreate the generated sequence of samples. The other reason is that it could be slow in cases a large number of random samples would need to be generated. As a consequence, samples are generated using pseudorandom number generator in practice. It means that it's sufficient to have an initial random value $u_0$ and a generator function $G$ that is deterministic. The pseudorandom numbers are generated using the following definition: $u_1 = G(u_0)$, $u_2 = G(u_1)$, ..., $u_n = G(u_{n - 1})$. From this definition, it follows that for a fixed value of $u_0$, the sequence of generated samples is deterministic. Additionally, the performance of generating new samples is comparably good as the generator $G$ is deterministic. Lastly, to generate samples from any distribution, it suffices to calculate $q_F(u_1), q_F(u_2), ..., q_F(u_n)$, where $q_F$ is the inverse distribution function of the distribution $F$ and $u_1, u_2, ..., u_n$ are samples generated from the distribution $U[0, 1]$.
+
+
+# Task 4
+
+```{r}
+get_beta_fisher_information_samples <- function(samples_count, shape1, shape2, estimators_count=10000) {
+  fisher_samples <- rep(NA, estimators_count)
+  for (i in 1:estimators_count) {
+    generated_samples <- rbeta(samples_count, shape1, shape2)
+    fisher_samples[[i]] <- sum(log(generated_samples)) + samples_count / shape1
+  }
+  return(fisher_samples)
+}
+
+show_transformed_fisher_graphs <- function(fisher_information, samples_count, shape1, shape2, estimators_count=10000) {
+  transformed_samples <- rep(NA, estimators_count)
+  for (i in 1:estimators_count) {
+    beta_samples <- rbeta(samples_count, shape1, shape2)
+    estimated_shape1 <- -samples_count / sum(log(beta_samples))
+    transformed_samples[[i]] <- sqrt(samples_count * fisher_information) * (estimated_shape1 - shape1)
+  }
+  samples_df <- data.frame(sample = transformed_samples)
+  stat_mean <- mean(transformed_samples)
+  stat_sd <- sd(transformed_samples)
+  print(ggplot(samples_df, aes(x = sample)) +
+    geom_histogram(aes(y = ..density..), fill = "blue", color = "black", binwidth = 2.5) +
+    stat_function(fun = dnorm, args = list(mean = stat_mean, sd = stat_sd), size = 3.0, n = 1000) +
+    ggtitle(paste0("Transformed samples of Fisher information of Beta(shape1 = ", shape1, ", shape2 = ", shape2, ")")) +
+    xlab("Transformed Fisher information samples") +
+    theme(plot.title = element_text(hjust = 0.5)))
+  print(ggplot(samples_df, aes(sample = sample)) +
+    geom_qq(color = "darkorange") +
+    geom_qq_line(color = "darkblue", size = 1.0) +
+    ggtitle(paste0("Transformed samples of Fisher information of Beta(shape1 = ", shape1, ", shape2 = ", shape2, ")")) +
+    ylab("Transformed Fisher information samples") +
+    theme(plot.title = element_text(hjust = 0.5)))
+}
+
+perform_shape1_of_beta_experiment <- function(shape1, samples_count) {
+  fisher_samples <- get_beta_fisher_information_samples(samples_count, shape1 = shape1, shape2 = 1.0)
+  fisher_information <- var(fisher_samples)
+  print(paste0("Estimated Fisher information: ", round(fisher_information, digits = 3)))
+  show_transformed_fisher_graphs(fisher_information, samples_count, shape1 = shape1, shape2 = 1.0)
+}
+```
+
+```{r}
+perform_shape1_of_beta_experiment(shape1 = 0.5, samples_count = 50)
+perform_shape1_of_beta_experiment(shape1 = 1.0, samples_count = 50)
+perform_shape1_of_beta_experiment(shape1 = 2.0, samples_count = 50)
+perform_shape1_of_beta_experiment(shape1 = 5.0, samples_count = 50)
+```
+
+TODO
+
+
+# Task 5
+
+```{r}
+count_estimators_frame <- function(samples_func, estimators_count=10000) {
+  estimators_frame <- data.frame(matrix(nrow = estimators_count, ncol = 4))
+  colnames(estimators_frame) <- c("mean", "median", "weighted_mean", "normal_mean")
+  for (i in 1:estimators_count) {
+    generated_samples <- samples_func()
+    estimators_frame[i, "mean"] <- mean(generated_samples)
+    estimators_frame[i, "median"] <- median(generated_samples)
+    weights <- seq_along(generated_samples) / sum(seq_along(generated_samples))
+    estimators_frame[i, "weighted_mean"] <- sum(generated_samples * weights)
+    prev_sequences <- (seq_along(generated_samples) - 1) / length(generated_samples)
+    current_sequences <- seq_along(generated_samples) / length(generated_samples)
+    normal_weights <- dnorm(qnorm(prev_sequences)) - dnorm(qnorm(current_sequences))
+    sorted_samples <- sort(generated_samples)
+    estimators_frame[i, "normal_mean"] <- sum(sorted_samples * normal_weights)
+  }
+  return(estimators_frame)
+}
+```
+
+```{r}
+laplace_frame1 <- count_estimators_frame(samples_func = function() rlaplace(n = 50, location = 1.0, scale = 1.0))
+round(count_estimators_statistics(laplace_frame1, estimated_paramter = 1.0), digits = 6)
+
+laplace_frame2 <- count_estimators_frame(samples_func = function() rlaplace(n = 50, location = 4.0, scale = 1.0))
+round(count_estimators_statistics(laplace_frame2, estimated_paramter = 4.0), digits = 6)
+
+laplace_frame3 <- count_estimators_frame(samples_func = function() rlaplace(n = 50, location = 1.0, scale = 2.0))
+round(count_estimators_statistics(laplace_frame3, estimated_paramter = 1.0), digits = 6)
+```
+
+The experiments suggest that the optimal estimator for the Laplace distribution is a median of samples. The main reason is that the biases of median estimators are closest to $0$ on average. This result is in line with the theory that the optimal estimator is provided by the MLE, which is an unbiased estimator. Additionally, the variance of median estimators is the lowest in all conducted experiments. It is another sign of the optimality of the median estimator as from the Cramer-Rao bound it follows that the inverse of the Fisher information (i.e. the variance of the MLE) is a lower bound of any unbiased estimator.
+
+The results differ from these obtained in the first list of laboratory. This is expected as the optimal estimator for the normal distribution is a mean of samples, while it is not true for the Laplace distribution. Actually, it can be proved that the optimal estimator for the Laplace distribution is a median of samples that was suggested by the experiments.
+
+
+# Task 6
+
+```{r}
+binomal_frame6 <- count_binomal_estimators_frame(samples_count = 20, sample_size = 5, success_prob = 0.1)
+round(count_estimators_statistics(binomal_frame1), digits = 6)
+
+binomal_frame7 <- count_binomal_estimators_frame(samples_count = 100, sample_size = 5, success_prob = 0.1)
+round(count_estimators_statistics(binomal_frame1), digits = 6)
+
+poisson_frame5 <- count_poisson_estimators_frame(samples_count = 20, lambda_param = 0.5)
+round(count_estimators_statistics(poisson_frame5), digits = 6)
+
+poisson_frame6 <- count_poisson_estimators_frame(samples_count = 100, lambda_param = 0.5)
+round(count_estimators_statistics(poisson_frame6), digits = 6)
+
+perform_shape1_of_beta_experiment(shape1 = 0.5, samples_count = 20)
+
+perform_shape1_of_beta_experiment(shape1 = 0.5, samples_count = 100)
+
+laplace_frame4 <- count_estimators_frame(samples_func = function() rlaplace(n = 20, location = 1.0, scale = 1.0))
+round(count_estimators_statistics(laplace_frame4, estimated_paramter = 1.0), digits = 6)
+
+laplace_frame5 <- count_estimators_frame(samples_func = function() rlaplace(n = 100, location = 1.0, scale = 1.0))
+round(count_estimators_statistics(laplace_frame5, estimated_paramter = 1.0), digits = 6)
+```
+
+TODO
