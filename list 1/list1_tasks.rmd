@@ -30,20 +30,22 @@ count_estimators_frame <- function(generate_samples_func, estimators_count=10000
   return(estimators_frame)
 }
 
-
 count_estimators_statistics <- function(estimators_frame, estimated_paramter, excluded_col_names=c()) {
   statistics_frame <- data.frame(matrix(nrow = 1, ncol = 0))
   for (col_name in colnames(estimators_frame)) {
     if (col_name %in% excluded_col_names) {
       next
     }
-    statistics_frame[paste0(col_name, '.ms')] <- mean((c(estimators_frame[[col_name]]) - estimated_paramter) ^ 2)
-    statistics_frame[paste0(col_name, '.var')] <- var(c(estimators_frame[[col_name]]))
-    statistics_frame[paste0(col_name, '.bias')] <- mean(c(estimators_frame[[col_name]]) - estimated_paramter)
+    statistics_frame[paste0(col_name, '_variance')] <- var(c(estimators_frame[[col_name]]), na.rm = TRUE)
+    statistics_frame[paste0(col_name, '_mse')] <- mean(
+      (c(estimators_frame[[col_name]]) - estimated_paramter) ^ 2, na.rm = TRUE
+    )
+    statistics_frame[paste0(col_name, '_bias')] <- mean(
+      c(estimators_frame[[col_name]]) - estimated_paramter, na.rm = TRUE
+    )
   }
   return(statistics_frame)
 }
-
 
 count_norm_estimators_statistics <- function (n, mean, sd) {
   estimators_frame <- count_estimators_frame(function() rnorm(n=n, mean=mean, sd=sd))
@@ -90,12 +92,140 @@ The equation used in the Newton method can be derived from Taylor series expansi
 
 # Task 5
 
-TODO
+```{r}
+find_root_using_newton_method <- function(
+  data_points, l_function, ld_function, initial_estimate, max_steps = 1000, epsilon = 1e-2
+) {
+  best_estimate <- initial_estimate
+  for (step in 1:max_steps) {
+    last_estimate <- best_estimate
+    best_estimate <- best_estimate - l_function(data_points, best_estimate) / ld_function(data_points, best_estimate)
+    if (is.infinite(best_estimate) || is.na(best_estimate) || is.nan(best_estimate)) {
+      return(c(NaN, NaN))
+    }
+    if (abs(last_estimate - best_estimate) < epsilon) {
+      break
+    }
+  }
+  return(c(best_estimate, step))
+}
+
+get_mle_estimators_frame <- function (
+  generate_samples_func, first_derrivative_func, second_derrivative_func, initial_estimate=NULL, samples_count=10000
+) {
+  statistics_frame <- data.frame(matrix(nrow = samples_count, ncol = 2))
+  colnames(statistics_frame) <- c("mle", "steps")
+  is_mean_initial_estimate <- is.null(initial_estimate)
+  for (i in 1:samples_count) {
+    generated_samples <- generate_samples_func()
+    if (is_mean_initial_estimate) {
+      initial_estimate <- mean(generated_samples)
+    }
+    root_info <- find_root_using_newton_method(
+      generated_samples, first_derrivative_func, second_derrivative_func, initial_estimate
+    )
+    statistics_frame[i, "mle"] <- root_info[1]
+    statistics_frame[i, "steps"] <- root_info[2]
+  }
+  return(statistics_frame)
+}
+
+count_logistic_mle_estimator_statistics <- function (n, location, scale, initial_estimate=NULL) {
+  generate_samples_func <- function() rlogis(n, location, scale)
+  lexpr <- function(x, theta) exp((theta - x) / scale)
+  dexpr <- function(x, theta) (sqrt(scale) / scale * lexpr(x, theta)) / (sqrt(scale) + sqrt(scale) * lexpr(x, theta))
+  first_derrivative <- function (x, theta) length(x) / scale - 2 * sum(dexpr(x, theta))
+  ddexpr <- function (x, theta) (1 / scale * lexpr(x, theta)) / ((sqrt(scale) + sqrt(scale) * lexpr(x, theta)) ^ 2)
+  second_derivative <- function(x, theta) -2 * sum(ddexpr(x, theta))
+  mle_frame <- get_mle_estimators_frame(
+    generate_samples_func, first_derrivative, second_derivative, initial_estimate
+  )
+  statistics_frame <- count_estimators_statistics(mle_frame, location, excluded_col_names = c("steps"))
+  statistics_frame["steps_mean"] <- mean(c(mle_frame[["steps"]]), na.rm = TRUE)
+  statistics_frame["convergence_rate"] <- 1 - mean(is.nan(c(mle_frame[["steps"]])))
+  return(statistics_frame)
+}
+```
+
+```{r}
+round(count_logistic_mle_estimator_statistics(n=50, location=1, scale=1), digits=6)
+round(count_logistic_mle_estimator_statistics(n=50, location=4, scale=1), digits=6)
+round(count_logistic_mle_estimator_statistics(n=50, location=1, scale=2), digits=6)
+```
+
+Conducted experiments show that the maximum likelihood estimator for logistic distribution is unbiased as the variance is nearly equal to the mean squared error regardless of the parameters. Moreover, the last estimator has a greater variance compared to the first two estimators. This is expected as increasing the scale parameter of logistic distribution increases the variance of this distribution. The other outcome from the experiments is that the Newton method tends to converge to the true parameter value when the initial guess is initialized using a mean of generated samples. The average number of steps required to converge is less than 2 in all of the conducted experiments.
+
+```{r}
+round(count_logistic_mle_estimator_statistics(n=50, location=1, scale=1, initial_estimate=2.0), digits=6)
+round(count_logistic_mle_estimator_statistics(n=50, location=1, scale=1, initial_estimate=3.0), digits=6)
+round(count_logistic_mle_estimator_statistics(n=50, location=1, scale=1, initial_estimate=0.0), digits=6)
+round(count_logistic_mle_estimator_statistics(n=50, location=1, scale=1, initial_estimate=-1.0), digits=6)
+```
+
+Additional experiments show that if the initial guess is further from the true parameter, the number of steps required to converge increases. In most of these experiments, 3-4 steps were needed to converge, while in the previous experiments, 2 steps were sufficient in most simulations.
 
 # Task 6
 
-TODO
+```{r}
+count_cauchy_mle_estimator_statistics <- function (n, location, scale, initial_estimate=NULL) {
+  generate_samples_func <- function() rcauchy(n, location, scale)
+  lexpr <- function(x, theta) ((x - theta) / scale) ^ 2
+  first_derivative <- function (x, theta) sum((2 / scale ^ 2 * (x - theta)) / (1 + lexpr(x, theta)))
+  second_derivative <- function(x, theta) sum((2 / scale ^ 2 * (lexpr(x, theta) - 1)) / ((1 + lexpr(x, theta)) ^ 2))
+  mle_frame <- get_mle_estimators_frame(
+    generate_samples_func, first_derivative, second_derivative, initial_estimate
+  )
+  statistics_frame <- count_estimators_statistics(mle_frame, location, excluded_col_names = c("steps"))
+  statistics_frame["steps_mean"] <- mean(c(mle_frame[["steps"]]), na.rm = TRUE)
+  statistics_frame["convergence_rate"] <- 1 - mean(is.nan(c(mle_frame[["steps"]])))
+  return(statistics_frame)
+}
+```
+
+```{r}
+round(count_cauchy_mle_estimator_statistics(n=50, location=1, scale=1, initial_estimate=1.5), digits=6)
+round(count_cauchy_mle_estimator_statistics(n=50, location=4, scale=1, initial_estimate=4.5), digits=6)
+round(count_cauchy_mle_estimator_statistics(n=50, location=1, scale=2, initial_estimate=1.5), digits=6)
+```
+
+Similarly to the previous cases, the experiments showed that the maximum likelihood estimator for Cauchy distribution is unbiased. Contrary to the previous experiments, the initial guess was set to the value near the true value of the location parameter. The reason for this change is that the expected value of Cauchy distribution is undefined, so the mean of generated samples was often far away from the true value of the location parameter. Additionally, it can be observed that the Newton method converges pretty quickly in most simulations.
+
+```{r}
+round(count_cauchy_mle_estimator_statistics(n=50, location=1, scale=1, initial_estimate=1.75), digits=6)
+round(count_cauchy_mle_estimator_statistics(n=50, location=1, scale=1, initial_estimate=0.25), digits=6)
+round(count_cauchy_mle_estimator_statistics(n=50, location=1, scale=1, initial_estimate=3.0), digits=6)
+round(count_cauchy_mle_estimator_statistics(n=50, location=1, scale=1, initial_estimate=-1.0), digits=6)
+```
+
+After changing the value of the initial guess to any value further from the true location parameter, the number of steps required to converge increased significantly. Additionally, when the distance from the location parameter to the initial guess was equal to 2.0, the converge rate decreased drastically to 5%.
 
 # Task 7
 
-TODO
+```{r}
+round(count_norm_estimators_statistics(n=20, mean=1, sd=1), digits=6)
+round(count_norm_estimators_statistics(n=20, mean=4, sd=1), digits=6)
+round(count_norm_estimators_statistics(n=20, mean=1, sd=2), digits=6)
+round(count_logistic_mle_estimator_statistics(n=20, location=1, scale=1), digits=6)
+round(count_logistic_mle_estimator_statistics(n=20, location=4, scale=1), digits=6)
+round(count_logistic_mle_estimator_statistics(n=20, location=1, scale=2), digits=6)
+round(count_cauchy_mle_estimator_statistics(n=20, location=1, scale=1, initial_estimate=1.5), digits=6)
+round(count_cauchy_mle_estimator_statistics(n=20, location=4, scale=1, initial_estimate=4.5), digits=6)
+round(count_cauchy_mle_estimator_statistics(n=20, location=1, scale=2, initial_estimate=1.5), digits=6)
+```
+
+After changing the number of samples from 50 to 20, the variance of estimators increased. It was the case especially with the MLE estimators in which the required number of steps to converge increased significantly, while the convergence rate decreased.
+
+```{r}
+round(count_norm_estimators_statistics(n=100, mean=1, sd=1), digits=6)
+round(count_norm_estimators_statistics(n=100, mean=4, sd=1), digits=6)
+round(count_norm_estimators_statistics(n=100, mean=1, sd=2), digits=6)
+round(count_logistic_mle_estimator_statistics(n=100, location=1, scale=1), digits=6)
+round(count_logistic_mle_estimator_statistics(n=100, location=4, scale=1), digits=6)
+round(count_logistic_mle_estimator_statistics(n=100, location=1, scale=2), digits=6)
+round(count_cauchy_mle_estimator_statistics(n=100, location=1, scale=1, initial_estimate=1.5), digits=6)
+round(count_cauchy_mle_estimator_statistics(n=100, location=4, scale=1, initial_estimate=4.5), digits=6)
+round(count_cauchy_mle_estimator_statistics(n=100, location=1, scale=2, initial_estimate=1.5), digits=6)
+```
+
+The last experiment involved increasing the number of samples to 100. In contrast to the previous experiment, the variance of estimators decreased. Moreover, the required number of steps to converge decreased a bit, while the convergence rate was close to 100% for all estimators.
+
