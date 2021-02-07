@@ -218,8 +218,7 @@ The results are very close to the results when the variances of the variables we
 
 # Task 7
 
-# TODO
-
+Our goal is to estimate the confidence interval of the quantity $\frac{\sigma_y^2}{\sigma_x^2}$, where $\sigma_x^2$ is the variance of the variables $X_k \sim \mathcal{N}(\mu_x, \sigma_x^2)$ and $\sigma_y^2$ is the variance of the variables $Y_k \sim \mathcal{N}(\mu_y, \sigma_y^2)$. As the variables $\mu_x, \mu_y$ are known, we can estimate the variances as $S_x^2 = \frac{1}{n_x} \sum_k (X_k - \mu_x)^2$ and $S_y^2 = \frac{1}{n_y} \sum_k (Y_k - \mu_y)^2$. The distribution of the quantity $\frac{S_y^2}{S_x^2}$ can be estimated using the fact that the distributions of the variables $\frac{n_x S_x^2}{\sigma_x^2}$, $\frac{n_y S_y^2}{\sigma_y^2}$ are known as chi-square distributions with $n_x$, $n_y$ degrees of freedom, respectively. What is more, the distribution of the variable $\frac{\sigma_y^2 S_x^2}{\sigma_x^2 S_y^2}$ is known as the Fisher distribution with $n_x, n_y$ degrees of freedom. It implies that the confidence interval is equal to $F_1 \frac{S_y^2}{S_x^2} \leq \frac{\sigma_y^2}{\sigma_x^2} \leq F_2 \frac{S_y^2}{S_x^2}$, where $F_1$ represents the $\frac{\alpha}{2}$ quantile of the Fisher distribution with $n_x, n_y$ degrees of freedom and $F_2$ represents the $1 - \frac{\alpha}{2}$ quantile of the Fisher distribution with $n_x, n_y$ degrees of freedom.
 
 # Task 8
 
@@ -238,12 +237,13 @@ get_vars_quotient_ci <- function (distribution1, distribution2, samples1, sample
 simulate_coverage_frequency(vars_df, aggreagate_vars_quotient, get_vars_quotient_ci)
 ```
 
-# TODO
+The first outcome from the experiment is that the confidence interval of the normal distribution is approximated very well. This is not true for the other distributions. From the theoretical perspective, these distributions are not guaranteed to converge to the Fisher distribution as the central limit theorem doesn't apply in this case. The experiment proves that there exist some distributions that actually don't converge to the normal distribution, at least when $50$ samples are used. Additionally, the results for the Cauchy distribution are very poor as the mean and variance of this distribution are undefined.
 
 
 # Task 9
 
-# TODO
+The theory is similar to the theory of estimating the quantity $\frac{\sigma_y^2}{\sigma_x^2}$ when the $\mu_x, \mu_y$ were known. The main difference is the estimation of the variances that are equal to $S_x^2 = \frac{1}{n_x - 1} \sum_k (X_k - \mu_x)^2$ and $S_y^2 = \frac{1}{n_y - 1} \sum_k (Y_k - \mu_y)^2$ in this case. As a result, the distribution of the quantity $\frac{\sigma_y^2 S_x^2}{\sigma_x^2 S_y^2}$ is the Fisher distribution with $n_x - 1$, $n_y - 1$ degrees of freedom. It implies that the confidence interval is equal to $F_1 \frac{S_y^2}{S_x^2} \leq \frac{\sigma_y^2}{\sigma_x^2} \leq F_2 \frac{S_y^2}{S_x^2}$, where $F_1$ represents the $\frac{\alpha}{2}$ quantile of the Fisher distribution with $n_x - 1, n_y - 1$ degrees of freedom and $F_2$ represents the $1 - \frac{\alpha}{2}$ quantile of the Fisher distribution with $n_x - 1, n_y - 1$ degrees of freedom.
+
 
 # Task 10
 
@@ -262,7 +262,7 @@ get_vars_quotient_uknown_sd_ci <- function (distribution1, distribution2, sample
 simulate_coverage_frequency(vars_df, aggreagate_vars_quotient, get_vars_quotient_uknown_sd_ci)
 ```
 
-# TODO
+Similarly to the previous experiment, the confidence intervals of the normal distribution are approximated very well. The accuracy of approximations is similar to the accuracy of approximations when the $\mu_x, \mu_y$ were known. In contrast, the confidence intervals are not approximated well when logistic distribution and Cauchy distribution are used. While in the case of the logistic distribution the cause of poor results is that the central limit theorem doesn't apply in this case, in the case of the Cauchy distribution it is caused by the fact that its variance is undefined.
 
 
 # Task 11
@@ -283,9 +283,11 @@ simulate_coverage_frequency(vars_df, aggreagate_vars_quotient, get_vars_quotient
 simulate_coverage_frequency(vars_df, aggreagate_vars_quotient, get_vars_quotient_uknown_sd_ci, samples_count = 100)
 ```
 
-# TODO
+The experiments show that the approximations of confidence intervals are a bit worse when the number of samples is decreased to $20$. In contrast, the approximations are better when $100$ samples are used. The differences are especially visible for the logistic distribution in the experiments that approximate a quotient of variances. Since the central limit theorem doesn't apply in this case, such significant differences were not expected. Thus, it can be a coincidence. Lastly, the number of samples doesn't impact the results for the Cauchy distribution. This is expected as the general problem with this distribution is that its mean and variance are undefined.
 
 
 # Task 12
 
-# TODO
+The delta method can be used to approximate the variance of the transformed distribution. In more detail, the theorem states that if $\sqrt{n}(X_n - \theta) \xrightarrow{D} \mathcal{N}(0, \sigma^2)$, then $\sqrt{n}(g(X_n) - g(\theta)) \xrightarrow{D} \mathcal{N}(0, \sigma^2 (g'(\theta)^2))$, where $g$ is differentiable function that represents a transformation and $g'(\theta) \neq 0$. Thus, the most basic application of the method would be to derive the variance of a distribution $D_t$ that is a transformation of another distribution $D_s$ with a known variance. Then, this variance can be used to calculate the confidence interval of a mean for the $D_t$ distribution.
+
+The other application of the delta method would be to calculate the confidence interval of the transformation of a parameter $\theta$ with the estimated Fisher information $I(\hat{\theta})$. The confidence interval for the $g(\theta)$ follows directly from the following theorem: $\sqrt{n}(g(\hat{\theta_n}) - g(\theta_0)) \xrightarrow{D} \mathcal{N}(0, \frac{g'(\theta_0)^2}{I(\theta_0)})$.
