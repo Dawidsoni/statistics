@@ -1,0 +1,283 @@
+---
+title: "Statistics - Assignment 7"
+author: Dawid Wegner
+date: 28/01/2021
+output: html_notebook
+---
+
+```{r}
+library("ggplot2")
+library("dplyr")
+library("pracma")
+library("latex2exp")
+set.seed(100)
+```
+
+# Task 1
+
+```{r}
+calculate_neyman_statistic <- function (samples, polynomials_count) {
+  statistic_value <- 0.0
+  for (i in 1:polynomials_count) {
+    legendre_values_sum <- sqrt(2 * i + 1) * sum(legendre(i, 2 * samples - 1)[1, ])
+    statistic_value <- statistic_value + (1 / sqrt(length(samples)) * legendre_values_sum) ^ 2
+  }
+  return(statistic_value)
+}
+
+
+calculate_bic_neyman_statistic <- function (samples, max_polynomials_count) {
+  optimal_bic_value <- -Inf
+  optimal_statistic_value <- -Inf
+  for (polynomials_count in 1:max_polynomials_count) {
+    statistic_value <- calculate_neyman_statistic(samples, polynomials_count)
+    bic_value <- statistic_value - polynomials_count * log(length(samples))
+    if (bic_value > optimal_bic_value) {
+      optimal_bic_value <- bic_value
+      optimal_statistic_value <- statistic_value
+    }
+  }
+  return(optimal_statistic_value)
+}
+
+
+calculate_aic_neyman_statistic <- function (samples, max_polynomials_count) {
+  optimal_aic_value <- -Inf
+  optimal_statistic_value <- -Inf
+  for (polynomials_count in 1:max_polynomials_count) {
+    statistic_value <- calculate_neyman_statistic(samples, polynomials_count)
+    aic_value <- statistic_value - 2 * polynomials_count
+    if (aic_value > optimal_aic_value) {
+      optimal_aic_value <- aic_value
+      optimal_statistic_value <- statistic_value
+    }
+  }
+  return(optimal_statistic_value)
+}
+
+
+simulate_test_statistic_values <- function (statistic_func, samples_func, samples_count, simulations_count = 1000) {
+  samples_df <- samples_func(simulations_count * samples_count)
+  statistics_df <- data.frame(matrix(data = NA, nrow = simulations_count, ncol = dim(samples_df)[2]))
+  colnames(statistics_df) <- colnames(samples_df)
+  for (i in 1:simulations_count) {
+    min_sample_index <- samples_count * (i - 1) + 1
+    max_sample_index <- samples_count * i
+    for (experiment_name in colnames(samples_df)) {
+      samples_slice <- samples_df[[experiment_name]][min_sample_index:max_sample_index]
+      statistics_df[i, experiment_name] <- statistic_func(samples_slice)
+    }
+  }
+  return(statistics_df)
+}
+
+
+estimate_test_statistic_critical_value <- function (
+  statistic_func, samples_func, samples_count, simulations_count = 1000, significance_level = 0.05
+) {
+  simulated_test_statistics <- simulate_test_statistic_values(
+    statistic_func, samples_func, samples_count, simulations_count
+  )
+  estimated_critical_values <- data.frame(matrix(data = NA, nrow = 1, ncol = dim(simulated_test_statistics)[2]))
+  colnames(estimated_critical_values) <- colnames(simulated_test_statistics)
+  critical_value_index <- floor((1 - significance_level / 2) * simulations_count)
+  for (column in colnames(estimated_critical_values)) {
+    ordered_values <- sort(simulated_test_statistics[[column]])
+    estimated_critical_values[column] <- ordered_values[critical_value_index]
+  }
+  return(estimated_critical_values)
+}
+
+
+generate_samples_from_pdf <- function (
+  pdf_func, max_pdf_value, lower_support = 0, upper_support = 1, samples_count = 1
+) {
+  generated_samples <- rep(NA, samples_count)
+  for (i in 1:samples_count) {
+    while (TRUE) {
+      x_coord <- runif(n = 1, min = lower_support, max = upper_support)
+      y_coord <- max_pdf_value * runif(n = 1, min = 0, max = 1)
+      if (y_coord <= pdf_func(x_coord)) {
+        break
+      }
+    }
+    generated_samples[[i]] <- x_coord
+  }
+  return(generated_samples)
+}
+
+
+generate_uniform_samples <- function (samples_count) {
+  samples_df <- data.frame(matrix(nrow = samples_count, ncol = 1))
+  colnames(samples_df) <- c("uniform_0_1")
+  samples_df["uniform_0_1"] <- runif(samples_count)
+  return(samples_df)
+}
+
+
+analyse_critical_values <- function (samples_count, simulations_count = 1000, significance_level = 0.05) {
+  critical_value_func <- function (statistic_func) estimate_test_statistic_critical_value(
+    statistic_func, generate_uniform_samples, samples_count, simulations_count, significance_level
+  )
+  aic_neyman_statistic_func <- function(samples) calculate_aic_neyman_statistic(samples, max_polynomials_count = 12)
+  estimated_aic_neyman_critical_value <- critical_value_func(aic_neyman_statistic_func)
+  bic_neyman_statistic_func <- function(samples) calculate_bic_neyman_statistic(samples, max_polynomials_count = 12)
+  estimated_bic_neyman_critical_value <- critical_value_func(bic_neyman_statistic_func)
+  print(paste0("Estimations for samples_count = ", samples_count))
+  print(paste0("Estimated N_A 2-sided test critical value: ", round(estimated_aic_neyman_critical_value, digits = 3)))
+  print(paste0("Estimated N_S 2-sided test critical value: ", round(estimated_bic_neyman_critical_value, digits = 3)))
+}
+
+
+generate_simple_cos_samples <- function (samples_count) {
+  samples_df <- data.frame(matrix(nrow = samples_count, ncol = 1))
+  colnames(samples_df) <- c("cos_offset_0_4_cycles_1")
+  cos_pdf_func <- function (x) 1 + 0.4 * cos(pi * x)
+  samples_df["cos_offset_0_4_cycles_1"] <- generate_samples_from_pdf(
+    cos_pdf_func, max_pdf_value = 1.4, samples_count = samples_count
+  )
+  return(samples_df)
+}
+
+
+estimate_test_power <- function (
+  statistic_func, samples_func, h0_rejection_func, samples_count, simulations_count = 1000
+) {
+  simulated_test_statistics <- simulate_test_statistic_values(
+    statistic_func, samples_func, samples_count, simulations_count
+  )
+  estimated_test_powers <- data.frame(matrix(data = NA, nrow = 1, ncol = dim(simulated_test_statistics)[2]))
+  colnames(estimated_test_powers) <- colnames(simulated_test_statistics)
+  for (column in colnames(estimated_test_powers)) {
+    estimated_test_powers[column] <- mean(h0_rejection_func(simulated_test_statistics[[column]]))
+  }
+  return(estimated_test_powers)
+}
+
+
+generate_tests_powers <- function (samples_func, samples_count, simulations_count = 1000) {
+  neyman_bic_statistic_func <- function(samples) calculate_bic_neyman_statistic(samples, max_polynomials_count = 12)
+  neyman_bic_rejection_func <- function (values) abs(values) >= 5.569
+  neyman_aic_statistic_func <- function(samples) calculate_aic_neyman_statistic(samples, max_polynomials_count = 12)
+  neyman_aic_rejection_func <- function (values) abs(values) >= 20.307
+  estimate_power_func <- function (statistic_func, rejection_func) estimate_test_power(
+    statistic_func, samples_func, rejection_func, samples_count, simulations_count
+  )
+  neyman_bic_df <- estimate_power_func(neyman_bic_statistic_func, neyman_bic_rejection_func)
+  neyman_aic_df <- estimate_power_func(neyman_aic_statistic_func, neyman_aic_rejection_func)
+  joint_test_power_df <- data.frame(matrix(nrow = 2, ncol = dim(neyman_bic_df)[2] + 1))
+  colnames(joint_test_power_df) <- c("test_name", colnames(neyman_bic_df))
+  joint_test_power_df["test_name"] <- c("N_S test", "N_A test")
+  joint_test_power_df[1,  colnames(neyman_bic_df)] <- neyman_bic_df[1, ]
+  joint_test_power_df[2,  colnames(neyman_aic_df)] <- neyman_aic_df[1, ]
+  return(joint_test_power_df)
+}
+
+
+generate_multi_samples_tests_powers <- function (
+  samples_func, samples_counts, simulations_count = 1000
+) {
+  joint_test_power_df <- data.frame()
+  for (samples_count in samples_counts) {
+    test_power_df <- generate_tests_powers(samples_func, samples_count, simulations_count)
+    test_power_df["samples_count"] <- samples_count
+    joint_test_power_df <- rbind(joint_test_power_df, test_power_df)
+  }
+  return(joint_test_power_df)
+}
+
+
+plot_tests_powers <- function (test_power_df, power_column, title, x_label, y_label) {
+  print(ggplot(test_power_df, aes_string(y = power_column)) +
+    geom_point(aes(x = samples_count, colour = factor(x = test_name)), shape = 19, size = 2.2) +
+    scale_shape_identity() +
+    xlab(x_label) +
+    ylab(y_label) +
+    ggtitle(title) +
+    labs(colour = "Test type") +
+    theme(plot.title = element_text(hjust = 0.5)))
+}
+
+
+analyse_simple_cos_test_power <- function () {
+  test_power_df <- generate_multi_samples_tests_powers(
+    generate_simple_cos_samples, samples_counts = c(10, 20, 30, 50, 75, 100)
+  )
+  plot_tests_powers(
+    test_power_df, power_column = "cos_offset_0_4_cycles_1",
+    title = TeX("Test powers for a distribution with PDF: $1 + 0.4 * cos(pi * x)$"),
+    x_label = "Number of samples", y_label = "Test power"
+  )
+}
+
+
+generate_custom_cos_samples <- function (samples_count) {
+  samples_df <- data.frame(matrix(nrow = samples_count, ncol = 5))
+  colnames(samples_df) <- c(
+    "cos_offset_0_5_cycles_2", "cos_offset_0_5_cycles_3", "cos_offset_0_6_cycles_4", "cos_offset_0_7_cycles_5",
+    "cos_offset_0_7_cycles_6"
+  )
+  cos_pdf_func <- function (offset, cycles, x) 1 + offset * cos(cycles * pi * x)
+  samples_df["cos_offset_0_5_cycles_2"] <- generate_samples_from_pdf(
+    function (x) cos_pdf_func(offset = 0.5, cycles = 2, x), max_pdf_value = 1.5, samples_count = samples_count
+  )
+  samples_df["cos_offset_0_5_cycles_3"] <- generate_samples_from_pdf(
+    function (x) cos_pdf_func(offset = 0.5, cycles = 3, x), max_pdf_value = 1.5, samples_count = samples_count
+  )
+  samples_df["cos_offset_0_6_cycles_4"] <- generate_samples_from_pdf(
+    function (x) cos_pdf_func(offset = 0.6, cycles = 4, x), max_pdf_value = 1.6, samples_count = samples_count
+  )
+  samples_df["cos_offset_0_7_cycles_5"] <- generate_samples_from_pdf(
+    function (x) cos_pdf_func(offset = 0.7, cycles = 5, x), max_pdf_value = 1.7, samples_count = samples_count
+  )
+  samples_df["cos_offset_0_7_cycles_6"] <- generate_samples_from_pdf(
+    function (x) cos_pdf_func(offset = 0.7, cycles = 6, x), max_pdf_value = 1.7, samples_count = samples_count
+  )
+  return(samples_df)
+}
+
+
+analyse_custom_cos_test_powers <- function () {
+  test_power_df <- generate_multi_samples_tests_powers(
+    generate_custom_cos_samples, samples_counts = c(10, 20, 30, 50, 75, 100)
+  )
+  plot_tests_powers(
+    test_power_df, power_column = "cos_offset_0_5_cycles_2",
+    title = TeX("Test powers for a distribution with PDF: $1 + 0.5 * cos(2 * pi * x)$"),
+    x_label = "Number of samples", y_label = "Test power"
+  )
+  plot_tests_powers(
+    test_power_df, power_column = "cos_offset_0_5_cycles_3",
+    title = TeX("Test powers for a distribution with PDF: $1 + 0.5 * cos(3 * pi * x)$"),
+    x_label = "Number of samples", y_label = "Test power"
+  )
+  plot_tests_powers(
+    test_power_df, power_column = "cos_offset_0_6_cycles_4",
+    title = TeX("Test powers for a distribution with PDF: $1 + 0.6 * cos(4 * pi * x)$"),
+    x_label = "Number of samples", y_label = "Test power"
+  )
+  plot_tests_powers(
+    test_power_df, power_column = "cos_offset_0_7_cycles_5",
+    title = TeX("Test powers for a distribution with PDF: $1 + 0.7 * cos(5 * pi * x)$"),
+    x_label = "Number of samples", y_label = "Test power"
+  )
+  plot_tests_powers(
+    test_power_df, power_column = "cos_offset_0_7_cycles_6",
+    title = TeX("Test powers for a distribution with PDF: $1 + 0.7 * cos(6 * pi * x)$"),
+    x_label = "Number of samples", y_label = "Test power"
+  )
+}
+
+
+analyse_critical_values(samples_count = 1500)
+```
+
+```{r}
+analyse_simple_cos_test_power()
+```
+
+```{r}
+analyse_custom_cos_test_powers()
+```
+
+The first outcome from the experiment is that the performance of tests $N_S$, $N_A$ varies based on a distribution of samples. In particular, the performance of $N_A$ test is very poor on the distribution with PDF $1 + 0.4 cos(\pi x)$, while it is comparably good on other distributions. In most cases, at least one of tests $N_S$ and $N_A$ tend to produce better results than tests $N_1$, $N_4$, $N_8$. There is only case of the PDF $1 + 0.6 cos(4 \pi x)$ in which both tests give a bit worse results than the $N_8$ test. In general, tests $N_S$ and $N_A$ seem to be a good replacement for $N_k$ tests as there is no need to adjust a constant $k$ that highly depends on a specific distribution that is tested.
