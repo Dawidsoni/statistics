@@ -232,25 +232,25 @@ analyse_critical_values <- function (samples_count, significance_level = 0.05) {
     calculate_wilcoxon_statistic, norm_experiments_df, create_mean_scaled_distributions_df, samples_count,
     significance_level = significance_level
   )
-  print(paste0("Estimated Wilcoxon test critival value: ", round(estimated_wilcoxon_critical_value, digits = 3)))
+  print(paste0("Estimated Wilcoxon test critical value: ", round(estimated_wilcoxon_critical_value, digits = 3)))
   print(paste0("Real Wilcoxon test critical value: ", round(qchisq(1 - significance_level, df = 1), digits = 3)))
   estimated_ab_critical_value <- estimate_test_statistic_critical_value(
     calculate_ab_statistic, norm_experiments_df, create_mean_scaled_distributions_df, samples_count,
     significance_level = significance_level
   )
-  print(paste0("Estimated AB test critival value: ", round(estimated_ab_critical_value, digits = 3)))
+  print(paste0("Estimated AB test critical value: ", round(estimated_ab_critical_value, digits = 3)))
   print(paste0("Real AB test critical value: ", round(qchisq(1 - significance_level, df = 1), digits = 3)))
   estimated_lepage_critical_value <- estimate_test_statistic_critical_value(
     calculate_lepage_statistic, norm_experiments_df, create_mean_scaled_distributions_df, samples_count,
     significance_level = significance_level
   )
-  print(paste0("Estimated Lepage test critival value: ", round(estimated_lepage_critical_value, digits = 3)))
+  print(paste0("Estimated Lepage test critical value: ", round(estimated_lepage_critical_value, digits = 3)))
   print(paste0("Real Lepage test critical value: ", round(qchisq(1 - significance_level, df = 2), digits = 3)))
   estimated_ks_critical_value <- estimate_test_statistic_critical_value(
     calculate_ks_statistic, norm_experiments_df, create_mean_scaled_distributions_df, samples_count,
     significance_level = significance_level
   )
-  print(paste0("Estimated KS test critival value: ", round(estimated_ks_critical_value, digits = 3)))
+  print(paste0("Estimated KS test critical value: ", round(estimated_ks_critical_value, digits = 3)))
   print(paste0("Real KS test critical value: ", round(sqrt(-log(significance_level / 2) * 0.5), digits = 3)))
 }
 ```
@@ -259,7 +259,9 @@ analyse_critical_values <- function (samples_count, significance_level = 0.05) {
 analyse_critical_values(samples_count = 20, significance_level = 0.05)
 ```
 
-# TODO
+The experiment shows that all of estimated critical values are close to the ground-truth critical values. Particularly, for Wilcoxon, Lepage and AB tests, the relative errors are around $0.01$. In the case of the KS test, the relative error is equal to around $0.06$. However, this order of magnitude of error is still acceptable if our goal is to decide whether to reject or not a hypothesis.
+
+Our approximations are correct for Wilcoxon, Lepage and AB tests as we can apply a theorem, stating that if $\int_0^1 \phi(u) du = 0$ and $\int_0^1  \phi(u)^2 du = 1$, then the statistic $T_{\phi}$ has an asymptotic normal distribution. In the case of the KS test, its PDF is close to the PDF of the normal distribution, especially when the number of samples is high. It explains why our approximations are pretty close to the ground-truth values.
 
 
 # Task 2
@@ -387,7 +389,9 @@ analyse_mean_scaled_tests_powers <- function (samples_count, significance_level 
 analyse_mean_scaled_tests_powers(samples_count = 20, significance_level = 0.05)
 ```
 
-# TODO
+The first insight from the experiment is that the KS test works better than other tests when one distribution is moved by some constant $M$. In particular, the results for the KS test are satisfactory in all of the tested cases. Additionally, the results for the Wilcoxon test are quite good, especially if the constant $M$ is high. In contrast, the AB test fails in all of the tested cases. It is expected as it tests the equality of two distributions based on their variances, whereas in our experiment, all of the pairs of distributions have the same variance. As the Lepage test is based on the Wilcoxon and AB tests, comparing it to the Wilcoxon test, its quality drops.
+
+The other outcome from the experiment is that the difference between the KS test and the Wilcoxon test is especially visible for small values of the constant $M$. In contrast, when the constant $M$ is high enough, both tests have their powers close to $1.0$. The last insight from our experiment is that the powers of tests are higher for the normal distribution compared to the Logistic and Cauchy distributions.
 
 
 # Task 3
@@ -446,7 +450,7 @@ analyse_sd_scaled_tests_powers <- function (samples_count, significance_level = 
 analyse_sd_scaled_tests_powers(samples_count = 20, significance_level = 0.05)
 ```
 
-# TODO
+The experiment shows that the AB test dominates the other tests in nearly all of the tested cases. The difference is especially visible when a difference between standard deviations of a pair of tested distributions is high. This phenomenon is quite expected as the AB test is specialized in the detection of differences in variances. Contrary to the AB test, the Wilcoxon test completely fails to detect a difference between a pair of distributions. As a result, the performance of the Lepage test is worse than the performance of the AB test. The KS test works well in all of the cases, but its performance is worse than the performance of the AB test on average.
 
 
 # Task 4
@@ -485,7 +489,7 @@ analyse_mean_sd_scaled_tests_powers <- function (samples_count, significance_lev
   )
   plot_tests_powers(
     normal_distribution_df, title = "A comparison of tests powers for Normal(0, 1) vs. Normal(x, 2.5x + 0.5))",
-    x_label = "Mean parameter of a normal distribution (standard deviation parameter is equal to 2.5 * mean + 0.5)",
+    x_label = "Mean parameter of a normal distribution",
     y_label = "Test power"
   )
   logis_powers_df <- mean_sd_scaled_experiments_df[mean_sd_scaled_experiments_df$type == "logistic", ]
@@ -494,7 +498,7 @@ analyse_mean_sd_scaled_tests_powers <- function (samples_count, significance_lev
   )
   plot_tests_powers(
     logis_distribution_df, title = "A comparison of tests powers for Logistic(0, 1) vs. Logistic(x, 2.5x + 0.5)",
-    x_label = "Location parameter of a Logistic distribution (scale parameter is equal to 2.5 * location + 0.5)",
+    x_label = "Location parameter of a Logistic distribution",
     y_label = "Test power"
   )
   cauchy_powers_df <- mean_sd_scaled_experiments_df[mean_sd_scaled_experiments_df$type == "cauchy", ]
@@ -503,17 +507,18 @@ analyse_mean_sd_scaled_tests_powers <- function (samples_count, significance_lev
   )
   plot_tests_powers(
     cauchy_distribution_df, title = "A comparison of tests powers for Cauchy(0, 1) vs. Cauchy(x, 2x + 1)",
-    x_label = "Location parameter of a Cauchy distribution (scale parameter is equal to 2 * location + 1)",
+    x_label = "Location parameter of a Cauchy distribution",
     y_label = "Test power"
   )
 }
+
 ```
 
 ```{r}
 analyse_mean_sd_scaled_tests_powers(samples_count = 20, significance_level = 0.05)
 ```
 
-# TODO
+The results of the experiment suggests that the KS and Lepage tests work better than other tests when there is a difference in both means and variances of two distributions. Particularly, the performance of the KS test is significantly better than the performance of the other tests when a difference between a pair of distributions is small. The only test with a poor performance is the Wilcoxon test. While its performance increases when a difference between a pair distributions is higher, it is noticeably poorer than the performance of other tests. Despite the fact that the performance of the Wilcoxon test is poor, it affects the Lepage test in a positive way. In particular, the performance of the Lepage is better than the performance of the AB test in most of the tested cases.
 
 
 # Task 5
@@ -522,7 +527,7 @@ analyse_mean_sd_scaled_tests_powers(samples_count = 20, significance_level = 0.0
 analyse_critical_values(samples_count = 50, significance_level = 0.05)
 ```
 
-# TODO
+While the quality of the approximations for the Wilcoxon, AB and Lepage tests decreased a bit, it can be a coincidence as the errors were already pretty low when $20$ samples were used. In contrast, the approximation for the critical value of the KS test is better compared to the case when $20$ samples were used. In this case, the relative error was much higher compared to the other tests, thus it can be assumed that increasing the number of samples actually improved our approximation.
 
 
 # Task 6
@@ -533,4 +538,4 @@ analyse_sd_scaled_tests_powers(samples_count = 50, significance_level = 0.05)
 analyse_mean_sd_scaled_tests_powers(samples_count = 50, significance_level = 0.05)
 ```
 
-# TODO
+When the number of samples was increased from $20$ to $50$, the powers of the tests increased significantly. Particularly, the powers of tests are close to the value of $1.0$ for more pairs of distributions. The only two exceptions, when the quality didn't change, are the AB test in the case when there is only a difference in distributions' means and the Wilcoxon test in the case when there is only a difference in distributions' variances. It is expected as it is known that these $2$ tests don't work in these cases.

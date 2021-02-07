@@ -218,25 +218,25 @@ analyse_critical_values <- function (samples_count, significance_level = 0.05) {
     calculate_wilcoxon_statistic, norm_experiments_df, create_mean_scaled_distributions_df, samples_count,
     significance_level = significance_level
   )
-  print(paste0("Estimated Wilcoxon test critival value: ", round(estimated_wilcoxon_critical_value, digits = 3)))
+  print(paste0("Estimated Wilcoxon test critical value: ", round(estimated_wilcoxon_critical_value, digits = 3)))
   print(paste0("Real Wilcoxon test critical value: ", round(qchisq(1 - significance_level, df = 1), digits = 3)))
   estimated_ab_critical_value <- estimate_test_statistic_critical_value(
     calculate_ab_statistic, norm_experiments_df, create_mean_scaled_distributions_df, samples_count,
     significance_level = significance_level
   )
-  print(paste0("Estimated AB test critival value: ", round(estimated_ab_critical_value, digits = 3)))
+  print(paste0("Estimated AB test critical value: ", round(estimated_ab_critical_value, digits = 3)))
   print(paste0("Real AB test critical value: ", round(qchisq(1 - significance_level, df = 1), digits = 3)))
   estimated_lepage_critical_value <- estimate_test_statistic_critical_value(
     calculate_lepage_statistic, norm_experiments_df, create_mean_scaled_distributions_df, samples_count,
     significance_level = significance_level
   )
-  print(paste0("Estimated Lepage test critival value: ", round(estimated_lepage_critical_value, digits = 3)))
+  print(paste0("Estimated Lepage test critical value: ", round(estimated_lepage_critical_value, digits = 3)))
   print(paste0("Real Lepage test critical value: ", round(qchisq(1 - significance_level, df = 2), digits = 3)))
   estimated_ks_critical_value <- estimate_test_statistic_critical_value(
     calculate_ks_statistic, norm_experiments_df, create_mean_scaled_distributions_df, samples_count,
     significance_level = significance_level
   )
-  print(paste0("Estimated KS test critival value: ", round(estimated_ks_critical_value, digits = 3)))
+  print(paste0("Estimated KS test critical value: ", round(estimated_ks_critical_value, digits = 3)))
   print(paste0("Real KS test critical value: ", round(sqrt(-log(significance_level / 2) * 0.5), digits = 3)))
 }
 
@@ -285,7 +285,7 @@ generate_tests_powers <- function (
   right_critical_value <- 1 - significance_level / 2
   chisq1_h0_rejection_func <- function (x) !between(pchisq(x, df = 1), left_critical_value, right_critical_value)
   chisq2_h0_rejection_func <- function (x) !between(pchisq(x, df = 2), left_critical_value, right_critical_value)
-  ks_h0_rejection_func <- function (x) x > sqrt(-log(significance_level / 2)) * 0.5
+  ks_h0_rejection_func <- function(x) x >= sqrt(-log(significance_level) * 0.5)
   wilcoxon_test_power_df <- estimate_test_power(
     calculate_wilcoxon_statistic, experiments_df, samples_func, chisq1_h0_rejection_func, samples_count,
     simulations_count
@@ -453,7 +453,7 @@ analyse_mean_sd_scaled_tests_powers <- function (samples_count, significance_lev
   )
   plot_tests_powers(
     normal_distribution_df, title = "A comparison of tests powers for Normal(0, 1) vs. Normal(x, 2.5x + 0.5))",
-    x_label = "Mean parameter of a normal distribution (standard deviation parameter is equal to 2.5 * mean + 0.5)",
+    x_label = "Mean parameter of a normal distribution",
     y_label = "Test power"
   )
   logis_powers_df <- mean_sd_scaled_experiments_df[mean_sd_scaled_experiments_df$type == "logistic", ]
@@ -462,7 +462,7 @@ analyse_mean_sd_scaled_tests_powers <- function (samples_count, significance_lev
   )
   plot_tests_powers(
     logis_distribution_df, title = "A comparison of tests powers for Logistic(0, 1) vs. Logistic(x, 2.5x + 0.5)",
-    x_label = "Location parameter of a Logistic distribution (scale parameter is equal to 2.5 * location + 0.5)",
+    x_label = "Location parameter of a Logistic distribution",
     y_label = "Test power"
   )
   cauchy_powers_df <- mean_sd_scaled_experiments_df[mean_sd_scaled_experiments_df$type == "cauchy", ]
@@ -471,7 +471,7 @@ analyse_mean_sd_scaled_tests_powers <- function (samples_count, significance_lev
   )
   plot_tests_powers(
     cauchy_distribution_df, title = "A comparison of tests powers for Cauchy(0, 1) vs. Cauchy(x, 2x + 1)",
-    x_label = "Location parameter of a Cauchy distribution (scale parameter is equal to 2 * location + 1)",
+    x_label = "Location parameter of a Cauchy distribution",
     y_label = "Test power"
   )
 }
