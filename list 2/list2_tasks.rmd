@@ -140,13 +140,13 @@ show_transformed_fisher_graphs <- function(fisher_information, samples_count, sh
   for (i in 1:estimators_count) {
     beta_samples <- rbeta(samples_count, shape1, shape2)
     estimated_shape1 <- -samples_count / sum(log(beta_samples))
-    transformed_samples[[i]] <- sqrt(samples_count * fisher_information) * (estimated_shape1 - shape1)
+    transformed_samples[[i]] <- sqrt(fisher_information) * (estimated_shape1 - shape1)
   }
   samples_df <- data.frame(sample = transformed_samples)
   stat_mean <- mean(transformed_samples)
   stat_sd <- sd(transformed_samples)
   print(ggplot(samples_df, aes(x = sample)) +
-    geom_histogram(aes(y = ..density..), fill = "blue", color = "black", binwidth = 2.5) +
+    geom_histogram(aes(y = ..density..), fill = "blue", color = "black", binwidth = 0.3) +
     stat_function(fun = dnorm, args = list(mean = stat_mean, sd = stat_sd), size = 3.0, n = 1000) +
     ggtitle(paste0("Transformed samples of Fisher information of Beta(shape1 = ", shape1, ", shape2 = ", shape2, ")")) +
     xlab("Transformed Fisher information samples") +
@@ -174,7 +174,9 @@ perform_shape1_of_beta_experiment(shape1 = 2.0, samples_count = 50)
 perform_shape1_of_beta_experiment(shape1 = 5.0, samples_count = 50)
 ```
 
-TODO
+The first outcome from the experiments is that the estimations of the Fisher information are very close to the ground-truth values that can be calculated using the formula $I(\theta) = Var(l'(\theta, X)) = E[(l'(\theta, X))^2] = -E[l''(\theta, X)]$. Specifically, for the Beta distribution this quantity is equal to $\frac{n}{\theta^2}$. Thus, when $shape1 = 0.5$, the ground-truth Fisher information is equal to $\frac{50}{0.25} = 200$. Our simulation produces very close estimate of this value.
+
+The other part of the experiments involved plotting transformations of the generated Fisher information samples. After adjusting the number of classes of the histograms, it can be seen that in all cases the shape of the distribution is close to the standard normal distribution. Moreover, the plotted curves of the normal distribution confirms this fact even more. Additionally, the plotted QQ-plots suggest that the quantiles of the plotted distribution matches the quantiles of the normal distribution. The results of these experiments are in line with the theory, which states that the distribution of such defined variable converges to the standard normal distribution when $n \to \infty$.
 
 
 # Task 5
@@ -241,4 +243,4 @@ laplace_frame5 <- count_estimators_frame(samples_func = function() rlaplace(n = 
 round(count_estimators_statistics(laplace_frame5, estimated_paramter = 1.0), digits = 6)
 ```
 
-TODO
+The results show that when the number of samples is decreased from $50$ to $20$, the variances of estimators increases. The opposite result was obtained when the number of samples was increased to $100$ as in this case the variances of estimators decreased. Additionally, it can be observed that manipulating the number of samples impacts the plots in the 4th task significantly. When the number of samples was set to $20$, the plots were a bit further from the normal standard distribution compared to the experiment with $50$ samples. Lastly, increasing the number of samples to the value of $100$ caused that the plots were much closer to the standard normal distribution.

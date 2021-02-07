@@ -109,13 +109,13 @@ show_transformed_fisher_graphs <- function(fisher_information, samples_count, sh
   for (i in 1:estimators_count) {
     beta_samples <- rbeta(samples_count, shape1, shape2)
     estimated_shape1 <- -samples_count / sum(log(beta_samples))
-    transformed_samples[[i]] <- sqrt(samples_count * fisher_information) * (estimated_shape1 - shape1)
+    transformed_samples[[i]] <- sqrt(fisher_information) * (estimated_shape1 - shape1)
   }
   samples_df <- data.frame(sample = transformed_samples)
   stat_mean <- mean(transformed_samples)
   stat_sd <- sd(transformed_samples)
   ggplot(samples_df, aes(x = sample)) +
-    geom_histogram(aes(y = ..density..), fill = "blue", color = "black", binwidth = 2.5) +
+    geom_histogram(aes(y = ..density..), fill = "blue", color = "black", binwidth = 0.3) +
     stat_function(fun = dnorm, args = list(mean = stat_mean, sd = stat_sd), size = 3.0, n = 1000) +
     ggtitle(paste0("Transformed samples of Fisher information of Beta(shape1 = ", shape1, ", shape2 = ", shape2, ")")) +
     xlab("Transformed Fisher information samples") +
