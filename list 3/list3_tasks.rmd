@@ -135,8 +135,7 @@ positive_rates_df
 
 # Task 1
 
-TODO
-
+Our goal is to find the distribution of the random variable $\bar{X} = \frac{1}{n}\sum_k X_k$, where $X_k$ are independent random variables from the distribution $\mathcal{N}(\mu, \sigma)$. From the properties of the expected value and variance, it follows that the $\overline{X}$ random variable has the $\mathcal{N}(\mu, \frac{\sigma}{\sqrt{n}})$ distribution. Thus, the variable $Z = \frac{\bar{X} - \mu}{\sigma / \sqrt{n}}$ has the standard normal distribution. From the quantiles $z_{\alpha/2}$, $z_{1 - \alpha/2}$ of the $Z$ distribution, it follows that the $100(1 - \alpha)\%$ confidence interval of the standard normal distribution is equal to $z_{\alpha/2} \leq Z \leq z_{1 - \alpha/2}$. After substituting $Z = \frac{\bar{X} - \mu}{\sigma / \sqrt{n}}$ we get the confidence interval for the mean of our variable $\overline{X} - z_{\alpha/2}\frac{\sigma}{\sqrt{n}} \leq \mu \leq \overline{X} + z_{1 - \alpha/2} \frac{\sigma}{\sqrt{n}}$.
 
 # Task 2
 
@@ -153,16 +152,15 @@ get_mean_confidence_interval <- function (column_name, samples, significance_lev
 simulate_coverage_frequency(means_df, get_mean_confidence_interval)
 ```
 
-TODO
+The results of the experiments are in line with the theory. Firstly, the coverage probabilities of the normal distributions are close to the significance level of $95\%$. The small errors are expected as the finite number of $10000$ simulations was performed.
 
+The coverage probabilities of the logistic distributions are also close to the significance level. This phenomenon is expected as it follows from the central limit theorem that the distribution of the mean of independent random variables from the same distribution converges to the normal distribution. In practice, for distributions with low skewness it suffices to have about $30$ samples. In particular, the skewness of the logistic distribution is equal to $0$. The coverage probabilities of the other distributions, except of the Cauchy distribution, are also close the significance level. These results were less expected as the skewness of the exponential distribution is equal to $2$, while the skewness of the chi-square distribution is equal to $\sqrt{\frac{8}{\mu}}$. The results prove that even a distribution with a positive skewness converges to the normal distribution when $50$ samples are used.
+
+Lastly, the coverage probabilities of the Cauchy distribution are far away from the significance level. Regardless of the parameters, the expected value of this distribution is undefined. This property explains the observed results.
 
 # Task 3
 
-```{r}
-```
-
-TODO
-
+The theory is similar to the theory of finding a mean with a known variance. The only difference is that instead of having a fixed value $\sigma$ representing a standard deviation of a distribution, we have a variable $S$ representing a standard deviation of our samples. Thus, our goal is to find the distribution of the random variable $T = \frac{\overline{X} - \mu}{S / \sqrt{n}}$. This distribution is known as a Student's t-distribution with $n - 1$ degrees of freedom. It means that to find the confidence interval, it suffices to follow the same steps as in the case when the variance was known. After doing so, we get $\overline{X} - t_{\alpha/2}\frac{S}{\sqrt{n}} \leq \mu \leq \overline{X} + t_{1 - \alpha/2} \frac{S}{\sqrt{n}}$, where $t_{\alpha/2}$ and $t_{1 - \alpha/2}$ are the quantiles of the Student's t-distribution.
 
 # Task 4
 
@@ -178,12 +176,14 @@ get_mean_unknown_sd_confidence_interval <- function (unused_column_name, samples
 simulate_coverage_frequency(means_df, get_mean_unknown_sd_confidence_interval)
 ```
 
-TODO
+The simulated coverage probability is close to the significance level in all cases. The Cauchy distribution is the only one distribution for which the errors are significant. This can be the effect of the property that the mean of the Cauchy distribution is undefined. Additionally, the errors of the distributions with the positive skewness are much higher compared to the distributions with the skewness value of 0. The highest error is achieved for the Chi-square distribution with one degree of freedom. Actually, the skewness of this distribution is the highest among all of the considered distributions.
 
 
 # Task 5
 
-TODO
+To find the confidence interval of a variance, assuming that a mean is known, there are at least two possibilities. One possibility is to assume that our random variable comes from a normal distribution and use the fact that $\hat{\sigma_n}^2 \sim \frac{\sigma^2}{n}\chi^2$, where $\chi^2$ is the chi-square distribution with $n$ degrees of freedom. Thus, the confidence interval is equal to $\frac{n \hat{\sigma_n}^2}{\chi_{1 - \alpha / 2}^2} \leq \sigma^2 \leq \frac{n \hat{\sigma_n}^2}{\chi_{\alpha / 2}^2}$, where $\chi_{1 - \alpha / 2}^2$ and $\chi_{\alpha / 2}^2$ are the quantiles of the chi-square distribution with $n$ degrees of freedom.
+
+Another possibility is to consider the random variable $Y = (X - \overline{X})^2$, taking advantage of the fact that $\overline{X}$ is known. The confidence interval of the variance of $X$ is the same as the confidence interval of the mean of $Y$ with an unknown variance. The equation for this confidence interval was already derived.
 
 
 # Task 6
@@ -213,15 +213,13 @@ simulate_coverage_frequency(variances_df, get_sd_confidence_interval_using_chisq
 simulate_coverage_frequency(variances_df, get_sd_confidence_interval_using_student)
 ```
 
-TODO
+The first insight from the experiments is that the $\chi^2$ distribution approximates the confidence interval of the normal distribution very well. This is not true for the other distributions. From the theoretical perspective, these distributions are not guaranteed to converge to the chi-square distribution as the central limit theorem doesn't apply in this case. The experiment proves that there exist some distributions that actually don't converge to the normal distribution, at least when $50$ samples are used.
 
+The second experiment shows that using $50$ samples is not enough to converge when the t-distribution is used. Some of the approximations are better compared to the previous experiment, but they are still far from the true level of significance. These results can be the effect of transforming variables that may cause the increase of the skewness.
 
 # Task 7
 
-```{r}
-```
-
-TODO
+To derive the confidence interval of the variance, assuming that the mean is unknown, the distribution of the random variable $\sigma^2$ has to be found. To find this distribution, the $\chi^2$ distribution with the $n - 1$ degrees of freedom can be applied to our variables as it represents the quantity $\chi^2 = \sum_k \frac{X_k - \overline{X}}{\sigma^2} = \frac{(n - 1)S^2}{\sigma^2}$. After transforming this expression, we get the confidence interval $\frac{(n - 1)S^2}{\chi^2_{1 - \alpha/2}} \leq \sigma^2 \leq \frac{(n - 1)S^2}{\chi^2_{\alpha/2}}$, where the $\chi^2_{1 - \alpha/2}$ and $\chi^2_{\alpha/2}$ represent the quantiles of the chi-square distribution with $n - 1$ degrees of freedom.
 
 
 # Task 8
@@ -239,15 +237,12 @@ get_sd_unknown_mean_confidence_interval <- function (unused_column_name, samples
 simulate_coverage_frequency(variances_df, get_sd_unknown_mean_confidence_interval)
 ```
 
-TODO
+The results of the experiment prove that the confidence intervals are defined well for the normal distribution. In contrast, the confidence intervals of the other distributions don't cover the real value with the expected probability. It is expected as there is no theoretical guarantee that these distributions will converge to the chi-square distribution. Additionally, the errors of the distributions with higher skewness are higher compared to the other distributions.
 
 
 # Task 9
 
-```{r}
-```
-
-TODO
+To find the confidence interval for proportions, it suffices to use the formula for the confidence interval of the mean with an unknown variance. It means that we can reuse the confidence interval formula $\overline{X} - t_{\alpha/2}\frac{S}{\sqrt{n}} \leq \mu \leq \overline{X} + t_{1 - \alpha/2} \frac{S}{\sqrt{n}}$, where $t_{\alpha/2}$ and $t_{1 - \alpha/2}$ are the quantiles of the Student's t-distribution. The only distinction is that our samples come from a discrete Bernoulli distribution, implying that there is no point in considering values outside of the range $[0, 1]$.
 
 
 # Task 10
@@ -255,8 +250,8 @@ TODO
 ```{r}
 get_positive_rate_confidence_interval <- function (unused_column_name, samples, significance_level = 0.05) {
   estimated_probability <- mean(samples >= 0)
-  variance <- estimated_probability * (1 - estimated_probability)
-  deviation <- qnorm(1 - significance_level / 2) * sqrt(variance / length(samples))
+  variance <- var(samples >= 0)
+  deviation <- qt(1 - significance_level / 2, df = length(samples) - 1) * sqrt(variance / length(samples))
   return(c(estimated_probability - deviation, estimated_probability + deviation))
 }
 ```
@@ -265,7 +260,7 @@ get_positive_rate_confidence_interval <- function (unused_column_name, samples, 
 simulate_coverage_frequency(positive_rates_df, get_positive_rate_confidence_interval)
 ```
 
-TODO
+The results show that the confidence intervals are approximated well in all cases. Especially, there is no real difference between the considered distributions in this case. The reason is that in all cases the probability of drawing a positive sample is equal to $0.5$.
 
 
 # Task 11
@@ -289,5 +284,9 @@ simulate_coverage_frequency(positive_rates_df, get_positive_rate_confidence_inte
 simulate_coverage_frequency(positive_rates_df, get_positive_rate_confidence_interval, samples_count = 100)
 ```
 
-TODO
+The first outcome from the experiments is that the results of estimating a confidence interval of a mean with either a known or an unknown variance are worse when the number of samples is decreased to $20$. In contrast, the results are significantly better when $100$ samples are used. The difference is especially visible for the distributions with a high skewness.
+
+On the other hand, changing the number of samples when estimating a confidence interval of a variance doesn't have much impact on the estimation quality. In particular, some of the results are better when $20$ samples are used. It suggests that using a high number of samples doesn't imply the quality boost in the cases when $\chi^2$ distribution is used. The only exception is the case when Student's t-distribution was used on the transformed variable. In this case, the results are a bit better when the number of samples is increased, suggesting that it converges to the expected probability.
+
+Lastly, when the number of samples is increased, there is a small improvement in the results for the confidence intervals of proportions. This is not always true, but the confidence intervals are better on average. As the results are already very close to the expected probability when $20$ samples are used, there is a high chance that most of the impact is caused by the fact that only $10000$ simulations were used for our approximations.
 

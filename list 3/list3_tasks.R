@@ -177,8 +177,8 @@ simulate_coverage_frequency(variances_df, get_sd_unknown_mean_confidence_interva
 
 get_positive_rate_confidence_interval <- function (unused_column_name, samples, significance_level = 0.05) {
   estimated_probability <- mean(samples >= 0)
-  variance <- estimated_probability * (1 - estimated_probability)
-  deviation <- qnorm(1 - significance_level / 2) * sqrt(variance / length(samples))
+  variance <- var(samples >= 0)
+  deviation <- qt(1 - significance_level / 2, df = length(samples) - 1) * sqrt(variance / length(samples))
   return(c(estimated_probability - deviation, estimated_probability + deviation))
 }
 
